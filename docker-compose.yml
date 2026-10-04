@@ -1,0 +1,60 @@
+services:
+
+  maven:
+    image: maven:3.9.16-eclipse-temurin-21
+    container_name: webapp-maven
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - maven-repository:/root/.m2
+      - war-artifact:/artifacts
+    command: >
+      sh -c "
+        mvn clean package &&
+        cp target/*.war /artifacts/app.war
+      "
+    networks:
+      - webapp-network
+
+
+  tomcat:
+    image: tomcat:10.1.60-jdk21-temurin-jammy
+    container_name: webapp-tomcat
+    ports:
+      - "8080:8080"
+    volumes:
+      - war-artifact:/usr/local/tomcat/webapps
+    depends_on:
+      maven:
+        condition: service_completed_successfully
+    networks:
+      - webapp-network
+
+
+  mysql:
+    image: mysql:8.4.11
+    container_name: webapp-mysql
+
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: myapp
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - webapp-network
+
+
+networks:
+  webapp-network:
+    driver: bridge
+
+
+volumes:
+
+  maven-repository:
+  war-artifact:
+  mysql-data:
